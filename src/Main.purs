@@ -4,7 +4,7 @@ import Prelude
 
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE, log)
-import Data.Record (delete, get, insert)
+import Data.Record (get, insert)
 import Global.Unsafe (unsafeStringify)
 import Type.Prelude (class IsSymbol, class RowLacks, class RowToList, RLProxy(RLProxy), SProxy(SProxy))
 import Type.Row (Cons, Nil, kind RowList)
@@ -23,9 +23,8 @@ class MapRecord (xs :: RowList) (row :: # Type) a b (row' :: # Type)
 
 instance mapRecordCons ::
   ( IsSymbol name
-  , RowLacks name tailRow
-  , RowCons name a tailRow row
-  , MapRecord tail tailRow a b tailRow'
+  , RowCons name a trash row
+  , MapRecord tail row a b tailRow'
   , RowLacks name tailRow'
   , RowCons name b tailRow' row'
   ) => MapRecord (Cons name a tail) row a b row' where
@@ -34,12 +33,9 @@ instance mapRecordCons ::
     where
       nameP = SProxy :: SProxy name
       val = f $ get nameP r
-      r' :: Record tailRow
-      r' = delete nameP r
-      rest :: Record tailRow'
-      rest = mapRecordImpl (RLProxy :: RLProxy tail) f r'
+      rest = mapRecordImpl (RLProxy :: RLProxy tail) f r
 
-instance mapRecordNil :: MapRecord Nil () a b () where
+instance mapRecordNil :: MapRecord Nil row a b () where
   mapRecordImpl _ _ _ = {}
 
 main :: forall e. Eff (console :: CONSOLE | e) Unit
