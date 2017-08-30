@@ -5,6 +5,7 @@ import Prelude
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE, log)
 import Data.Record (get, insert)
+import Data.Tuple (Tuple(..))
 import Global.Unsafe (unsafeStringify)
 import Type.Prelude (class IsSymbol, class RowLacks, class RowToList, RLProxy(RLProxy), SProxy(SProxy))
 import Type.Row (Cons, Nil, kind RowList)
@@ -38,12 +39,70 @@ instance mapRecordCons ::
 instance mapRecordNil :: MapRecord Nil row a b () where
   mapRecordImpl _ _ _ = {}
 
+class ZipRecord
+  ( rla :: RowList )
+  ( ra :: # Type )
+  ( rlb :: RowList )
+  ( rb :: # Type )
+  ( rc :: # Type )
+  | rla -> ra rc
+  , rlb -> rb rc
+  where
+    zipRecordImpl ::
+         RLProxy rla
+      -> Record ra
+      -> RLProxy rlb
+      -> Record rb
+      -> Record rc
+
+instance zipRecordNil :: ZipRecord Nil trashA Nil trashB ()
+  where
+    zipRecordImpl _ _ _ _ = {}
+
+instance zipRecordCons
+    :: ( IsSymbol k
+       , RowCons k a trashA ra
+       , RowCons k b trashB rb
+       , RowCons k (Tuple a b) rc' rc
+       , RowLacks k rc'
+       , ZipRecord ta ra tb rb rc'
+       )
+    => ZipRecord
+         (Cons k a ta)
+         ra
+         (Cons k b tb)
+         rb
+         rc
+  where
+    zipRecordImpl _ ra _ rb = insert name head tail
+      where
+        name = SProxy :: SProxy k
+        head = Tuple (get name ra) (get name rb)
+        ta = RLProxy :: RLProxy ta
+        tb = RLProxy :: RLProxy tb
+        tail = zipRecordImpl ta ra tb rb
+
+zipRecord :: forall ta ra tb rb rc a b
+   . RowToList ra ta
+  => RowToList rb tb
+  => ZipRecord ta ra tb rb rc
+  => Record ra
+  -> Record rb
+  -> Record rc
+zipRecord ra rb = zipRecordImpl ta ra tb rb
+  where
+    ta = RLProxy :: RLProxy ta
+    tb = RLProxy :: RLProxy tb
+
 main :: forall e. Eff (console :: CONSOLE | e) Unit
 main = do
   print $ mapRecord ((+) 1) {a: 1, b: 2, c: 3}
   -- {"c":4,"b":3,"a":2}
   print $ mapRecord (append "shown: " <<< show) {a: 1, b: 2, c: 3}
   -- {"c":"3","b":"2","a":"1"}
+
+  print $ zipRecord { a: 1, b: 5 } { a: 1, b: 4 }
+  -- {"b":{"value0":5,"value1":4},"a":{"value0":1,"value1":1}}
   where
     print :: forall a. a -> Eff (console :: CONSOLE | e) Unit
     print = log <<< unsafeStringify
