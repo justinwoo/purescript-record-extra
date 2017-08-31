@@ -4,10 +4,13 @@ import Prelude
 
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE, log)
+import Data.Foldable (traverse_)
+import Data.List (List, (:))
+import Data.Monoid (mempty)
 import Data.Record (get, insert)
 import Data.Tuple (Tuple(..))
 import Global.Unsafe (unsafeStringify)
-import Type.Prelude (class IsSymbol, class RowLacks, class RowToList, RLProxy(RLProxy), SProxy(SProxy))
+import Type.Prelude (class IsSymbol, class RowLacks, class RowToList, RLProxy(RLProxy), SProxy(SProxy), reflectSymbol)
 import Type.Row (Cons, Nil, kind RowList)
 
 mapRecord :: forall row xs a b row'
@@ -94,6 +97,28 @@ zipRecord ra rb = zipRecordImpl ta ra tb rb
     ta = RLProxy :: RLProxy ta
     tb = RLProxy :: RLProxy tb
 
+class Keys (xs :: RowList) where
+  keysImpl :: RLProxy xs -> List String
+
+instance nilKeys :: Keys Nil where
+  keysImpl _ = mempty
+
+instance consKeys ::
+  ( IsSymbol name
+  , Keys tail
+  ) => Keys (Cons name ty tail) where
+  keysImpl _ = first : rest
+    where
+      first = reflectSymbol (SProxy :: SProxy name)
+      rest = keysImpl (RLProxy :: RLProxy tail)
+
+keys :: forall row rl
+   . RowToList row rl
+  => Keys rl
+  => Record row
+  -> List String
+keys _ = keysImpl (RLProxy :: RLProxy rl)
+
 main :: forall e. Eff (console :: CONSOLE | e) Unit
 main = do
   print $ mapRecord ((+) 1) {a: 1, b: 2, c: 3}
@@ -103,6 +128,8 @@ main = do
 
   print $ zipRecord { a: 1, b: 5 } { a: 1, b: 4 }
   -- {"b":{"value0":5,"value1":4},"a":{"value0":1,"value1":1}}
+
+  traverse_ print $ keys { a: 1, b: 2 }
   where
     print :: forall a. a -> Eff (console :: CONSOLE | e) Unit
     print = log <<< unsafeStringify
