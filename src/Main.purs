@@ -119,6 +119,38 @@ keys :: forall row rl
   -> List String
 keys _ = keysImpl (RLProxy :: RLProxy rl)
 
+class EqRecord rl row
+  | rl -> row
+  where
+    eqRecordImpl :: RLProxy rl -> Record row -> Record row -> Boolean
+
+instance eqRecordCons ::
+  ( IsSymbol name
+  , Eq ty
+  , RowCons name ty trash row
+  , EqRecord tail row
+  ) => EqRecord (Cons name ty tail) row where
+  eqRecordImpl _ a b =
+    if valA == valB
+      then eqRecordImpl tailp a b
+      else false
+    where
+      namep = SProxy :: SProxy name
+      valA = get namep a
+      valB = get namep b
+      tailp = RLProxy :: RLProxy tail
+
+instance eqRecordNil :: EqRecord Nil row where
+  eqRecordImpl _ _ _ = true
+
+eqRecord :: forall row rl
+   . RowToList row rl
+  => EqRecord rl row
+  => Record row
+  -> Record row
+  -> Boolean
+eqRecord a b = eqRecordImpl (RLProxy :: RLProxy rl) a b
+
 main :: forall e. Eff (console :: CONSOLE | e) Unit
 main = do
   print $ mapRecord ((+) 1) {a: 1, b: 2, c: 3}
@@ -130,6 +162,14 @@ main = do
   -- {"b":{"value0":5,"value1":4},"a":{"value0":1,"value1":1}}
 
   traverse_ print $ keys { a: 1, b: 2 }
+  -- "a" "b"
+
+  -- can't do nested until Eq Record integrated into prelude
+  -- or we use a new type class with overloading tricks until instance chains get added :(
+  print $ eqRecord {a: 1, b: 2, c: 3} {a: 1, b: 2, c: 3}
+  -- true
+  print $ eqRecord {a: 1, b: 2, c: 3} {a: 1, b: 2, c: 9999999}
+  -- false
   where
     print :: forall a. a -> Eff (console :: CONSOLE | e) Unit
     print = log <<< unsafeStringify
