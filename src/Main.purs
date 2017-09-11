@@ -10,7 +10,7 @@ import Data.Monoid (mempty)
 import Data.Record (get, insert)
 import Data.Tuple (Tuple(..))
 import Global.Unsafe (unsafeStringify)
-import Type.Prelude (class IsSymbol, class RowLacks, class RowToList, RLProxy(RLProxy), SProxy(SProxy), reflectSymbol)
+import Type.Prelude (class IsSymbol, class RowLacks, class RowToList, RLProxy(RLProxy), RProxy(..), SProxy(SProxy), reflectSymbol)
 import Type.Row (Cons, Nil, kind RowList)
 
 mapRecord :: forall row xs a b row'
@@ -112,10 +112,10 @@ instance consKeys ::
       first = reflectSymbol (SProxy :: SProxy name)
       rest = keysImpl (RLProxy :: RLProxy tail)
 
-keys :: forall row rl
+keys :: forall g row rl
    . RowToList row rl
   => Keys rl
-  => Record row
+  => g row -- this will work for any type with the row as a param!
   -> List String
 keys _ = keysImpl (RLProxy :: RLProxy rl)
 
@@ -161,8 +161,11 @@ main = do
   print $ zipRecord { a: 1, b: 5 } { a: 1, b: 4 }
   -- {"b":{"value0":5,"value1":4},"a":{"value0":1,"value1":1}}
 
+  -- works with records and RProxy because of the forall g. definition above
   traverse_ print $ keys { a: 1, b: 2 }
   -- "a" "b"
+  traverse_ print $ keys $ RProxy :: RProxy (c :: Void, d :: Void)
+  -- "c" "d"
 
   -- can't do nested until Eq Record integrated into prelude
   -- or we use a new type class with overloading tricks until instance chains get added :(
