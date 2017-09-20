@@ -119,6 +119,29 @@ keys :: forall g row rl
   -> List String
 keys _ = keysImpl (RLProxy :: RLProxy rl)
 
+slistKeys :: forall g tuples rl
+   . SListToRowList tuples rl
+  => Keys rl
+  => g tuples
+  -> List String
+slistKeys _ = keysImpl (RLProxy :: RLProxy rl)
+
+foreign import kind SList
+foreign import data SCons :: Symbol -> SList -> SList
+foreign import data SNil :: SList
+
+data SLProxy (xs :: SList) = SLProxy
+
+infixr 6 type SCons as :::
+
+class SListToRowList (xs :: SList) (rl :: RowList) | xs -> rl, rl -> xs
+
+instance slToRlSNil :: SListToRowList SNil Nil
+
+instance slToRlSCons ::
+  ( SListToRowList sTail tail
+  ) => SListToRowList (SCons name sTail) (Cons name trash tail)
+
 class EqRecord rl row
   | rl -> row
   where
@@ -166,6 +189,10 @@ main = do
   -- "a" "b"
   traverse_ print $ keys $ RProxy :: RProxy (c :: Void, d :: Void)
   -- "c" "d"
+
+  -- used my symbol list definition to do stuff
+  traverse_ print $ slistKeys $ SLProxy :: SLProxy ("a" ::: "b" ::: "c" ::: SNil)
+  -- "a" "b" "c"
 
   -- can't do nested until Eq Record integrated into prelude
   -- or we use a new type class with overloading tricks until instance chains get added :(
