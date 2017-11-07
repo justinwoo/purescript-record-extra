@@ -6,6 +6,7 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE, log)
 import Data.Foldable (traverse_)
 import Data.List (List, (:))
+import Data.Maybe (Maybe(..))
 import Data.Monoid (mempty)
 import Data.Record (get, insert)
 import Data.Tuple (Tuple(..))
@@ -174,6 +175,38 @@ eqRecord :: forall row rl
   -> Boolean
 eqRecord a b = eqRecordImpl (RLProxy :: RLProxy rl) a b
 
+class Applicative m <= SequenceRecord rl row row' m
+  | rl -> row row', rl -> m
+  where
+    sequenceRecordImpl :: RLProxy rl -> Record row -> m (Record row')
+
+instance sequenceRecordCons ::
+  ( IsSymbol name
+  , Applicative m
+  , RowCons name (m ty) trash row
+  , SequenceRecord tail row tailRow' m
+  , RowLacks name tailRow'
+  , RowCons name ty tailRow' row'
+  ) => SequenceRecord (Cons name (m ty) tail) row row' m where
+  sequenceRecordImpl _ a  =
+       insert namep <$> valA <*> rest
+    where
+      namep = SProxy :: SProxy name
+      valA = get namep a
+      tailp = RLProxy :: RLProxy tail
+      rest = sequenceRecordImpl tailp a
+
+instance sequenceRecordNil :: Applicative m => SequenceRecord Nil row () m where
+  sequenceRecordImpl _ _ = pure {}
+
+sequenceRecord :: forall row row' rl m
+   . RowToList row rl
+  => Applicative m
+  => SequenceRecord rl row row' m
+  => Record row
+  -> m (Record row')
+sequenceRecord a = sequenceRecordImpl (RLProxy :: RLProxy rl) a
+
 main :: forall e. Eff (console :: CONSOLE | e) Unit
 main = do
   print $ mapRecord ((+) 1) {a: 1, b: 2, c: 3}
@@ -200,6 +233,9 @@ main = do
   -- true
   print $ eqRecord {a: 1, b: 2, c: 3} {a: 1, b: 2, c: 9999999}
   -- false
+
+  print $ sequenceRecord {x: Just "a", y: Just 1, z: Just 3}
+  -- {"value0":{"z":3,"y":1,"x":"a"}}
   where
     print :: forall a. a -> Eff (console :: CONSOLE | e) Unit
     print = log <<< unsafeStringify
