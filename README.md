@@ -1,3 +1,6 @@
-# Purescript-Map-Record
+# Purescript-Record-Extra
+[![Build Status](https://travis-ci.org/justinwoo/purescript-record-extra.svg?branch=master)](https://travis-ci.org/justinwoo/purescript-record-extra)
 
-an example with RowToList to map a function to a record. this code might get moved to some existing library.
+Examples and extra functions for working with records in PureScript.
+
+These functions may be removed as they are merged into core libraries in 0.12 and beyond.
