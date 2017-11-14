@@ -1,17 +1,12 @@
-module Main where
+module Data.Record.Extra where
 
 import Prelude
 
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console (CONSOLE, log)
-import Data.Foldable (traverse_)
 import Data.List (List, (:))
-import Data.Maybe (Maybe(..))
 import Data.Monoid (mempty)
 import Data.Record (get, insert)
 import Data.Tuple (Tuple(..))
-import Global.Unsafe (unsafeStringify)
-import Type.Prelude (class IsSymbol, class RowLacks, class RowToList, RLProxy(RLProxy), RProxy(..), SProxy(SProxy), reflectSymbol)
+import Type.Prelude (class IsSymbol, class RowLacks, class RowToList, RLProxy(RLProxy), SProxy(SProxy), reflectSymbol)
 import Type.Row (Cons, Nil, kind RowList)
 
 mapRecord :: forall row xs a b row'
@@ -206,36 +201,3 @@ sequenceRecord :: forall row row' rl m
   => Record row
   -> m (Record row')
 sequenceRecord a = sequenceRecordImpl (RLProxy :: RLProxy rl) a
-
-main :: forall e. Eff (console :: CONSOLE | e) Unit
-main = do
-  print $ mapRecord ((+) 1) {a: 1, b: 2, c: 3}
-  -- {"c":4,"b":3,"a":2}
-  print $ mapRecord (append "shown: " <<< show) {a: 1, b: 2, c: 3}
-  -- {"c":"3","b":"2","a":"1"}
-
-  print $ zipRecord { a: 1, b: 5 } { a: 1, b: 4 }
-  -- {"b":{"value0":5,"value1":4},"a":{"value0":1,"value1":1}}
-
-  -- works with records and RProxy because of the forall g. definition above
-  traverse_ print $ keys { a: 1, b: 2 }
-  -- "a" "b"
-  traverse_ print $ keys $ RProxy :: RProxy (c :: Void, d :: Void)
-  -- "c" "d"
-
-  -- used my symbol list definition to do stuff
-  traverse_ print $ slistKeys $ SLProxy :: SLProxy ("a" ::: "b" ::: "c" ::: SNil)
-  -- "a" "b" "c"
-
-  -- can't do nested until Eq Record integrated into prelude
-  -- or we use a new type class with overloading tricks until instance chains get added :(
-  print $ eqRecord {a: 1, b: 2, c: 3} {a: 1, b: 2, c: 3}
-  -- true
-  print $ eqRecord {a: 1, b: 2, c: 3} {a: 1, b: 2, c: 9999999}
-  -- false
-
-  print $ sequenceRecord {x: Just "a", y: Just 1, z: Just 3}
-  -- {"value0":{"z":3,"y":1,"x":"a"}}
-  where
-    print :: forall a. a -> Eff (console :: CONSOLE | e) Unit
-    print = log <<< unsafeStringify
