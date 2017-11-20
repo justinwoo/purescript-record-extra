@@ -4,6 +4,7 @@
     "type": "git",
     "url": "git://github.com/justinwoo/purescript-record-extra.git"
   },
+  "license": "MIT",
   "ignore": [
     "**/.*",
     "node_modules",
