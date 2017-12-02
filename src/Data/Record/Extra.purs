@@ -3,7 +3,7 @@ module Data.Record.Extra where
 import Prelude
 
 import Data.List (List, (:))
-import Data.Monoid (mempty)
+import Data.Monoid (class Semigroup, mempty, (<>))
 import Data.Record (get, insert)
 import Data.Tuple (Tuple(..))
 import Type.Prelude (class IsSymbol, class RowLacks, class RowToList, RLProxy(RLProxy), SProxy(SProxy), reflectSymbol)
@@ -169,6 +169,41 @@ eqRecord :: forall row rl
   -> Record row
   -> Boolean
 eqRecord a b = eqRecordImpl (RLProxy :: RLProxy rl) a b
+
+
+class SemigroupRecord rl row row'
+  | rl -> row row'
+  where
+    appendRecordImpl :: RLProxy rl -> Record row -> Record row -> Record row'
+
+instance appendRecordCons ::
+  ( IsSymbol name
+  , Semigroup ty
+  , RowCons name ty trash row
+  , SemigroupRecord tail row tailRow'
+  , RowLacks name tailRow'
+  , RowCons name ty tailRow' row'
+  ) => SemigroupRecord (Cons name ty tail) row row' where
+  appendRecordImpl _ a b =
+      insert namep valC rest
+    where
+      namep = SProxy :: SProxy name
+      valA = get namep a
+      valB = get namep b
+      valC = valA <> valB
+      tailp = RLProxy :: RLProxy tail
+      rest = appendRecordImpl tailp a b
+
+instance appendRecordNil :: SemigroupRecord Nil row () where
+  appendRecordImpl _ _ _ = {}
+
+appendRecord :: forall row row' rl
+   . RowToList row rl
+  => SemigroupRecord rl row row'
+  => Record row
+  -> Record row
+  -> Record row'
+appendRecord a b = appendRecordImpl (RLProxy :: RLProxy rl) a b
 
 class Applicative m <= SequenceRecord rl row row' m
   | rl -> row row', rl -> m
