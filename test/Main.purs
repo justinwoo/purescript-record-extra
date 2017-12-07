@@ -7,7 +7,7 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE)
 import Data.List (List(Nil), (:))
 import Data.Maybe (Maybe(..))
-import Data.Record.Extra (type (:::), SLProxy(..), SNil, eqRecord, keys, mapRecord, sequenceRecord, slistKeys, zipRecord)
+import Data.Record.Extra (type (:::), SLProxy(..), SNil, memptyRecord, appendRecord, eqRecord, keys, mapRecord, sequenceRecord, slistKeys, zipRecord)
 import Data.Tuple (Tuple(..))
 import Test.Unit (failure, success, suite, test)
 import Test.Unit.Assert (assert, assertFalse, equal)
@@ -51,6 +51,24 @@ main = runTest do
     test "eqRecord" do
       assert "works equal" $ eqRecord {a: 1, b: 2, c: 3} {a: 1, b: 2, c: 3}
       assertFalse "works not equal" $ eqRecord {a: 5, b: 2, c: 3} {a: 1, b: 2, c: 3}
+
+    test "appendRecord" do
+      let appended = appendRecord {a: "1", b: [2], c: "3"} {a: "a", b: [4], c: "c"}
+      equal "1a" appended.a
+      equal [2,4] appended.b
+      equal "3c" appended.c
+
+    test "appendSubRecord" do
+      let appended = appendRecord {a: "1", b: [2], c: "3", d: 4} {a: "a", b: [4], c: "c"}
+      equal "1a" appended.a
+      equal [2,4] appended.b
+      equal "3c" appended.c
+      equal 4 appended.d
+
+    test "memptyRecord" do
+      let emptyRecord = memptyRecord :: {a :: String, b :: Array Int}
+      equal "" emptyRecord.a
+      equal [] emptyRecord.b
 
     test "sequenceRecord" do
       let sequenced = sequenceRecord {x: Just "a", y: Just 1, z: Just 3}
