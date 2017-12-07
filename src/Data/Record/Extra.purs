@@ -3,11 +3,11 @@ module Data.Record.Extra where
 import Prelude
 
 import Data.List (List, (:))
-import Data.Monoid (class Semigroup, mempty, (<>))
-import Data.Record (get, insert)
+import Data.Monoid (class Monoid, class Semigroup, mempty, (<>))
+import Data.Record (get, set, insert, modify)
 import Data.Tuple (Tuple(..))
-import Type.Prelude (class IsSymbol, class RowLacks, class RowToList, RLProxy(RLProxy), SProxy(SProxy), reflectSymbol)
-import Type.Row (Cons, Nil, kind RowList)
+import Type.Prelude (class IsSymbol, class ListToRow, class RowLacks, class RowToList, RLProxy(..), SProxy(SProxy), reflectSymbol)
+import Type.Row (class RowListRemove, Cons, Nil, kind RowList)
 
 mapRecord :: forall row xs a b row'
    . RowToList row xs
@@ -170,40 +170,58 @@ eqRecord :: forall row rl
   -> Boolean
 eqRecord a b = eqRecordImpl (RLProxy :: RLProxy rl) a b
 
+class AppendSubrecordImpl rl bigger smaller where
+  appendSubrecordImpl :: RLProxy rl -> Record bigger -> Record smaller -> Record bigger
 
-class SemigroupRecord rl row row'
-  | rl -> row row'
-  where
-    appendRecordImpl :: RLProxy rl -> Record row -> Record row -> Record row'
+instance appendSubrecordNil :: AppendSubrecordImpl Nil bigger smaller where
+  appendSubrecordImpl _ b s = b
 
-instance appendRecordCons ::
+instance appendSubrecordCons ::
   ( IsSymbol name
-  , Semigroup ty
-  , RowCons name ty trash row
-  , SemigroupRecord tail row tailRow'
-  , RowLacks name tailRow'
-  , RowCons name ty tailRow' row'
-  ) => SemigroupRecord (Cons name ty tail) row row' where
-  appendRecordImpl _ a b =
-      insert namep valC rest
-    where
-      namep = SProxy :: SProxy name
-      valA = get namep a
-      valB = get namep b
-      valC = valA <> valB
-      tailp = RLProxy :: RLProxy tail
-      rest = appendRecordImpl tailp a b
+  , RowCons name t trash smaller
+  , RowCons name t trash' bigger
+  , Semigroup t
+  , AppendSubrecordImpl tail bigger smaller
+  ) => AppendSubrecordImpl (Cons name t tail) bigger smaller where
+    appendSubrecordImpl _ bigger smaller = modify key modifier rest
+      where
+        key = SProxy :: SProxy name
+        modifier v = v <> get key smaller
+        rest = appendSubrecordImpl (RLProxy ∷ RLProxy tail) bigger smaller
 
-instance appendRecordNil :: SemigroupRecord Nil row () where
-  appendRecordImpl _ _ _ = {}
 
-appendRecord :: forall row row' rl
-   . RowToList row rl
-  => SemigroupRecord rl row row'
-  => Record row
-  -> Record row
-  -> Record row'
-appendRecord a b = appendRecordImpl (RLProxy :: RLProxy rl) a b
+appendRecord :: forall rl bigger smaller . RowToList smaller rl
+ => AppendSubrecordImpl rl bigger smaller
+ => Record bigger
+ -> Record smaller
+ -> Record bigger
+appendRecord b s = appendSubrecordImpl (RLProxy :: RLProxy rl) b s
+
+class MemptyRecord rl row | rl -> row
+  where
+    memptyRecordImpl :: RLProxy rl -> Record row
+
+instance memptyRecordNil :: MemptyRecord Nil () where
+  memptyRecordImpl _ = {}
+
+instance memptyRecordCons ::
+  ( IsSymbol name
+  , Monoid t
+  , MemptyRecord tail tailRow
+  , RowLacks name tailRow
+  , RowCons name t tailRow row
+  ) => MemptyRecord (Cons name t tail) row where
+  memptyRecordImpl _ =
+     insert namep mempty rest
+   where
+     namep = SProxy :: SProxy name
+     tailp = RLProxy :: RLProxy tail
+     rest = memptyRecordImpl tailp
+
+memptyRecord :: forall rl row . RowToList row rl
+   => MemptyRecord rl row
+   => Record row
+memptyRecord = memptyRecordImpl (RLProxy :: RLProxy rl)
 
 class Applicative m <= SequenceRecord rl row row' m
   | rl -> row row', rl -> m
