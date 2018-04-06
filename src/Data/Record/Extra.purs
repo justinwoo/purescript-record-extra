@@ -81,7 +81,7 @@ instance zipRecordCons
         tb = RLProxy :: RLProxy tb
         tail = zipRecordImpl ta ra tb rb
 
-zipRecord :: forall ta ra tb rb rc a b
+zipRecord :: forall ta ra tb rb rc
    . RowToList ra ta
   => RowToList rb tb
   => ZipRecord ta ra tb rb rc
