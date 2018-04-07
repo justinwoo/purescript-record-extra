@@ -175,6 +175,38 @@ class Applicative m <= SequenceRecord rl row row' m
   where
     sequenceRecordImpl :: RLProxy rl -> Record row -> m (Record row')
 
+class OrdRecord rl row
+  | rl -> row
+  where
+    compareRecordImpl :: RLProxy rl -> Record row -> Record row -> Ordering
+
+instance ordRecordCons ::
+  ( IsSymbol name
+  , Ord ty
+  , RowCons name ty trash row
+  , OrdRecord tail row
+  ) => OrdRecord (Cons name ty tail) row where
+  compareRecordImpl _ a b =
+    case compare valA valB of
+         EQ -> compareRecordImpl tailp a b
+         ordering -> ordering
+    where
+      namep = SProxy :: SProxy name
+      valA = get namep a
+      valB = get namep b
+      tailp = RLProxy :: RLProxy tail
+
+instance ordRecordNil :: OrdRecord Nil row where
+  compareRecordImpl _ _ _ = EQ
+
+compareRecord :: forall row rl
+   . RowToList row rl
+  => OrdRecord rl row
+  => Record row
+  -> Record row
+  -> Ordering
+compareRecord a b = compareRecordImpl (RLProxy :: RLProxy rl) a b
+
 instance sequenceRecordCons ::
   ( IsSymbol name
   , Applicative m

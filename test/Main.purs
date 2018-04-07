@@ -7,10 +7,10 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE)
 import Data.List (List(Nil), (:))
 import Data.Maybe (Maybe(..))
-import Data.Record.Extra (type (:::), SLProxy(..), SNil, eqRecord, keys, mapRecord, sequenceRecord, slistKeys, zipRecord)
+import Data.Record.Extra (type (:::), SLProxy(..), SNil, eqRecord, keys, mapRecord, compareRecord, sequenceRecord, slistKeys, zipRecord)
 import Data.Tuple (Tuple(..))
 import Test.Unit (failure, success, suite, test)
-import Test.Unit.Assert (assert, assertFalse, equal)
+import Test.Unit.Assert (assert, assertFalse, equal, shouldEqual)
 import Test.Unit.Console (TESTOUTPUT)
 import Test.Unit.Main (runTest)
 
@@ -51,6 +51,15 @@ main = runTest do
     test "eqRecord" do
       assert "works equal" $ eqRecord {a: 1, b: 2, c: 3} {a: 1, b: 2, c: 3}
       assertFalse "works not equal" $ eqRecord {a: 5, b: 2, c: 3} {a: 1, b: 2, c: 3}
+
+    test "compareRecord" do
+      compareRecord {a: 1, b: 2, c: 3} {a: 1, b: 2, c: 3} `shouldEqual` EQ
+      compareRecord {a: 2, b: 2, c: 3} {a: 1, b: 2, c: 3} `shouldEqual` GT
+      compareRecord {a: 1, b: 3, c: 3} {a: 1, b: 2, c: 3} `shouldEqual` GT
+      compareRecord {a: 1, b: 2, c: 4} {a: 1, b: 2, c: 3} `shouldEqual` GT
+      compareRecord {a: 1, b: 2, c: 3} {a: 2, b: 2, c: 3} `shouldEqual` LT
+      compareRecord {a: 1, b: 2, c: 3} {a: 1, b: 3, c: 3} `shouldEqual` LT
+      compareRecord {a: 1, b: 2, c: 3} {a: 1, b: 2, c: 4} `shouldEqual` LT
 
     test "sequenceRecord" do
       let sequenced = sequenceRecord {x: Just "a", y: Just 1, z: Just 3}
