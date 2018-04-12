@@ -7,7 +7,7 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE)
 import Data.List (List(Nil), (:))
 import Data.Maybe (Maybe(..))
-import Data.Record.Extra (type (:::), SLProxy(..), SNil, eqRecord, keys, mapRecord, compareRecord, sequenceRecord, slistKeys, zipRecord)
+import Data.Record.Extra (type (:::), SLProxy(..), SNil, compareRecord, eqRecord, keys, mapRecord, sequenceRecord, showRecord, slistKeys, zipRecord)
 import Data.Tuple (Tuple(..))
 import Test.Unit (failure, success, suite, test)
 import Test.Unit.Assert (assert, assertFalse, equal, shouldEqual)
@@ -60,6 +60,12 @@ main = runTest do
       compareRecord {a: 1, b: 2, c: 3} {a: 2, b: 2, c: 3} `shouldEqual` LT
       compareRecord {a: 1, b: 2, c: 3} {a: 1, b: 3, c: 3} `shouldEqual` LT
       compareRecord {a: 1, b: 2, c: 3} {a: 1, b: 2, c: 4} `shouldEqual` LT
+
+    test "showRecord" do
+      showRecord {} `shouldEqual` "{}"
+
+      showRecord { a: 1, b: 2, c: "foo", d: "bar" }
+        `shouldEqual` "{ a: 1, b: 2, c: \"foo\", d: \"bar\" }"
 
     test "sequenceRecord" do
       let sequenced = sequenceRecord {x: Just "a", y: Just 1, z: Just 3}

@@ -3,8 +3,9 @@ module Data.Record.Extra where
 import Prelude
 
 import Data.List (List, (:))
+import Data.List.Lazy as LL
 import Data.Monoid (mempty)
-import Data.Record (get, insert)
+import Data.Record (delete, get, insert)
 import Data.Tuple (Tuple(..))
 import Type.Prelude (class IsSymbol, class RowLacks, class RowToList, RLProxy(RLProxy), SProxy(SProxy), reflectSymbol)
 import Type.Row (Cons, Nil, kind RowList)
@@ -170,11 +171,6 @@ eqRecord :: forall row rl
   -> Boolean
 eqRecord a b = eqRecordImpl (RLProxy :: RLProxy rl) a b
 
-class Applicative m <= SequenceRecord rl row row' m
-  | rl -> row row', rl -> m
-  where
-    sequenceRecordImpl :: RLProxy rl -> Record row -> m (Record row')
-
 class OrdRecord rl row
   | rl -> row
   where
@@ -206,6 +202,44 @@ compareRecord :: forall row rl
   -> Record row
   -> Ordering
 compareRecord a b = compareRecordImpl (RLProxy :: RLProxy rl) a b
+
+class ShowRecord rl row | rl -> row where
+  showRecordImpl :: RLProxy rl -> Record row -> LL.List String
+
+instance showRecordNil :: ShowRecord Nil () where
+  showRecordImpl _ _ = LL.nil
+
+instance showRecordConsShow ::
+  ( IsSymbol key
+  , Show a
+  , ShowRecord listRest rowRest
+  , RowLacks key rowRest
+  , RowCons  key a rowRest rowFull
+  ) => ShowRecord (Cons key a listRest) rowFull where
+  showRecordImpl _ rec = (reflectSymbol key <> ": " <> show val) `LL.cons` rest
+    where
+    key = SProxy :: SProxy key
+    val = get key rec
+    rest = showRecordImpl (RLProxy :: RLProxy listRest) (delete key rec)
+
+showRecord
+  :: forall row list
+   . RowToList row list
+  => ShowRecord list row
+  => Record row
+  -> String
+showRecord rec =
+  if LL.length recordStrs == 0
+    then "{}"
+    else "{ " <> LL.intercalate ", " recordStrs <> " }"
+  where
+  recordStrs = showRecordImpl (RLProxy ::RLProxy list) rec
+
+class Applicative m <= SequenceRecord rl row row' m
+  | rl -> row row', rl -> m
+  where
+    sequenceRecordImpl :: RLProxy rl -> Record row -> m (Record row')
+
 
 instance sequenceRecordCons ::
   ( IsSymbol name
