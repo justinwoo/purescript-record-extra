@@ -1,48 +1,48 @@
-module Data.Record.Extra where
+module Record.Extra where
 
 import Prelude
 
 import Data.List (List, (:))
 import Data.List.Lazy as LL
-import Data.Monoid (mempty)
-import Data.Record (delete, get, insert)
 import Data.Tuple (Tuple(..))
-import Type.Prelude (class IsSymbol, class RowLacks, class RowToList, RLProxy(RLProxy), SProxy(SProxy), reflectSymbol)
-import Type.Row (Cons, Nil, kind RowList)
+import Prim.Row as Row
+import Prim.RowList as RL
+import Record as R
+import Type.Prelude (class IsSymbol, RLProxy(RLProxy), SProxy(SProxy), reflectSymbol)
 
 mapRecord :: forall row xs a b row'
-   . RowToList row xs
+   . RL.RowToList row xs
   => MapRecord xs row a b row'
   => (a -> b)
   -> Record row
   -> Record row'
 mapRecord = mapRecordImpl (RLProxy :: RLProxy xs)
 
-class MapRecord (xs :: RowList) (row :: # Type) a b (row' :: # Type)
+class MapRecord (xs :: RL.RowList) (row :: # Type) a b (row' :: # Type)
   | xs -> row row' a b where
   mapRecordImpl :: RLProxy xs -> (a -> b) -> Record row -> Record row'
 
 instance mapRecordCons ::
   ( IsSymbol name
-  , RowCons name a trash row
+  , Row.Cons name a trash row
   , MapRecord tail row a b tailRow'
-  , RowLacks name tailRow'
-  , RowCons name b tailRow' row'
-  ) => MapRecord (Cons name a tail) row a b row' where
+  , Row.Lacks name tailRow'
+  , Row.Cons name b tailRow' row'
+  ) => MapRecord (RL.Cons name a tail) row a b row' where
   mapRecordImpl _ f r =
-    insert nameP val rest
+    R.insert nameP val rest
     where
       nameP = SProxy :: SProxy name
-      val = f $ get nameP r
+      val = f $ R.get nameP r
       rest = mapRecordImpl (RLProxy :: RLProxy tail) f r
 
-instance mapRecordNil :: MapRecord Nil row a b () where
+instance mapRecordNil :: MapRecord RL.Nil row a b () where
   mapRecordImpl _ _ _ = {}
 
 class ZipRecord
-  ( rla :: RowList )
+  ( rla :: RL.RowList )
   ( ra :: # Type )
-  ( rlb :: RowList )
+  ( rlb :: RL.RowList )
   ( rb :: # Type )
   ( rc :: # Type )
   | rla -> ra rc
@@ -55,36 +55,36 @@ class ZipRecord
       -> Record rb
       -> Record rc
 
-instance zipRecordNil :: ZipRecord Nil trashA Nil trashB ()
+instance zipRecordNil :: ZipRecord RL.Nil trashA RL.Nil trashB ()
   where
     zipRecordImpl _ _ _ _ = {}
 
 instance zipRecordCons
     :: ( IsSymbol k
-       , RowCons k a trashA ra
-       , RowCons k b trashB rb
-       , RowCons k (Tuple a b) rc' rc
-       , RowLacks k rc'
+       , Row.Cons k a trashA ra
+       , Row.Cons k b trashB rb
+       , Row.Cons k (Tuple a b) rc' rc
+       , Row.Lacks k rc'
        , ZipRecord ta ra tb rb rc'
        )
     => ZipRecord
-         (Cons k a ta)
+         (RL.Cons k a ta)
          ra
-         (Cons k b tb)
+         (RL.Cons k b tb)
          rb
          rc
   where
-    zipRecordImpl _ ra _ rb = insert name head tail
+    zipRecordImpl _ ra _ rb = R.insert name head tail
       where
         name = SProxy :: SProxy k
-        head = Tuple (get name ra) (get name rb)
+        head = Tuple (R.get name ra) (R.get name rb)
         ta = RLProxy :: RLProxy ta
         tb = RLProxy :: RLProxy tb
         tail = zipRecordImpl ta ra tb rb
 
 zipRecord :: forall ta ra tb rb rc
-   . RowToList ra ta
-  => RowToList rb tb
+   . RL.RowToList ra ta
+  => RL.RowToList rb tb
   => ZipRecord ta ra tb rb rc
   => Record ra
   -> Record rb
@@ -94,23 +94,23 @@ zipRecord ra rb = zipRecordImpl ta ra tb rb
     ta = RLProxy :: RLProxy ta
     tb = RLProxy :: RLProxy tb
 
-class Keys (xs :: RowList) where
+class Keys (xs :: RL.RowList) where
   keysImpl :: RLProxy xs -> List String
 
-instance nilKeys :: Keys Nil where
+instance nilKeys :: Keys RL.Nil where
   keysImpl _ = mempty
 
 instance consKeys ::
   ( IsSymbol name
   , Keys tail
-  ) => Keys (Cons name ty tail) where
+  ) => Keys (RL.Cons name ty tail) where
   keysImpl _ = first : rest
     where
       first = reflectSymbol (SProxy :: SProxy name)
       rest = keysImpl (RLProxy :: RLProxy tail)
 
 keys :: forall g row rl
-   . RowToList row rl
+   . RL.RowToList row rl
   => Keys rl
   => g row -- this will work for any type with the row as a param!
   -> List String
@@ -131,13 +131,13 @@ data SLProxy (xs :: SList) = SLProxy
 
 infixr 6 type SCons as :::
 
-class SListToRowList (xs :: SList) (rl :: RowList) | xs -> rl, rl -> xs
+class SListToRowList (xs :: SList) (rl :: RL.RowList) | xs -> rl, rl -> xs
 
-instance slToRlSNil :: SListToRowList SNil Nil
+instance slToRlSNil :: SListToRowList SNil RL.Nil
 
 instance slToRlSCons ::
   ( SListToRowList sTail tail
-  ) => SListToRowList (SCons name sTail) (Cons name trash tail)
+  ) => SListToRowList (SCons name sTail) (RL.Cons name trash tail)
 
 class EqRecord rl row
   | rl -> row
@@ -147,24 +147,24 @@ class EqRecord rl row
 instance eqRecordCons ::
   ( IsSymbol name
   , Eq ty
-  , RowCons name ty trash row
+  , Row.Cons name ty trash row
   , EqRecord tail row
-  ) => EqRecord (Cons name ty tail) row where
+  ) => EqRecord (RL.Cons name ty tail) row where
   eqRecordImpl _ a b =
     if valA == valB
       then eqRecordImpl tailp a b
       else false
     where
       namep = SProxy :: SProxy name
-      valA = get namep a
-      valB = get namep b
+      valA = R.get namep a
+      valB = R.get namep b
       tailp = RLProxy :: RLProxy tail
 
-instance eqRecordNil :: EqRecord Nil row where
+instance eqRecordNil :: EqRecord RL.Nil row where
   eqRecordImpl _ _ _ = true
 
 eqRecord :: forall row rl
-   . RowToList row rl
+   . RL.RowToList row rl
   => EqRecord rl row
   => Record row
   -> Record row
@@ -179,24 +179,24 @@ class OrdRecord rl row
 instance ordRecordCons ::
   ( IsSymbol name
   , Ord ty
-  , RowCons name ty trash row
+  , Row.Cons name ty trash row
   , OrdRecord tail row
-  ) => OrdRecord (Cons name ty tail) row where
+  ) => OrdRecord (RL.Cons name ty tail) row where
   compareRecordImpl _ a b =
     case compare valA valB of
          EQ -> compareRecordImpl tailp a b
          ordering -> ordering
     where
       namep = SProxy :: SProxy name
-      valA = get namep a
-      valB = get namep b
+      valA = R.get namep a
+      valB = R.get namep b
       tailp = RLProxy :: RLProxy tail
 
-instance ordRecordNil :: OrdRecord Nil row where
+instance ordRecordNil :: OrdRecord RL.Nil row where
   compareRecordImpl _ _ _ = EQ
 
 compareRecord :: forall row rl
-   . RowToList row rl
+   . RL.RowToList row rl
   => OrdRecord rl row
   => Record row
   -> Record row
@@ -206,25 +206,25 @@ compareRecord a b = compareRecordImpl (RLProxy :: RLProxy rl) a b
 class ShowRecord rl row | rl -> row where
   showRecordImpl :: RLProxy rl -> Record row -> LL.List String
 
-instance showRecordNil :: ShowRecord Nil () where
+instance showRecordNil :: ShowRecord RL.Nil () where
   showRecordImpl _ _ = LL.nil
 
 instance showRecordConsShow ::
   ( IsSymbol key
   , Show a
   , ShowRecord listRest rowRest
-  , RowLacks key rowRest
-  , RowCons  key a rowRest rowFull
-  ) => ShowRecord (Cons key a listRest) rowFull where
+  , Row.Lacks key rowRest
+  , Row.Cons  key a rowRest rowFull
+  ) => ShowRecord (RL.Cons key a listRest) rowFull where
   showRecordImpl _ rec = (reflectSymbol key <> ": " <> show val) `LL.cons` rest
     where
     key = SProxy :: SProxy key
-    val = get key rec
-    rest = showRecordImpl (RLProxy :: RLProxy listRest) (delete key rec)
+    val = R.get key rec
+    rest = showRecordImpl (RLProxy :: RLProxy listRest) (R.delete key rec)
 
 showRecord
   :: forall row list
-   . RowToList row list
+   . RL.RowToList row list
   => ShowRecord list row
   => Record row
   -> String
@@ -244,24 +244,24 @@ class Applicative m <= SequenceRecord rl row row' m
 instance sequenceRecordCons ::
   ( IsSymbol name
   , Applicative m
-  , RowCons name (m ty) trash row
+  , Row.Cons name (m ty) trash row
   , SequenceRecord tail row tailRow' m
-  , RowLacks name tailRow'
-  , RowCons name ty tailRow' row'
-  ) => SequenceRecord (Cons name (m ty) tail) row row' m where
+  , Row.Lacks name tailRow'
+  , Row.Cons name ty tailRow' row'
+  ) => SequenceRecord (RL.Cons name (m ty) tail) row row' m where
   sequenceRecordImpl _ a  =
-       insert namep <$> valA <*> rest
+       R.insert namep <$> valA <*> rest
     where
       namep = SProxy :: SProxy name
-      valA = get namep a
+      valA = R.get namep a
       tailp = RLProxy :: RLProxy tail
       rest = sequenceRecordImpl tailp a
 
-instance sequenceRecordNil :: Applicative m => SequenceRecord Nil row () m where
+instance sequenceRecordNil :: Applicative m => SequenceRecord RL.Nil row () m where
   sequenceRecordImpl _ _ = pure {}
 
 sequenceRecord :: forall row row' rl m
-   . RowToList row rl
+   . RL.RowToList row rl
   => Applicative m
   => SequenceRecord rl row row' m
   => Record row

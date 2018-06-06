@@ -2,26 +2,16 @@ module Test.Main where
 
 import Prelude
 
-import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console (CONSOLE)
 import Data.List (List(Nil), (:))
 import Data.Maybe (Maybe(..))
-import Data.Record.Extra (type (:::), SLProxy(..), SNil, compareRecord, eqRecord, keys, mapRecord, sequenceRecord, showRecord, slistKeys, zipRecord)
 import Data.Tuple (Tuple(..))
+import Effect (Effect)
+import Record.Extra (type (:::), SLProxy(..), SNil, compareRecord, eqRecord, keys, mapRecord, sequenceRecord, showRecord, slistKeys, zipRecord)
 import Test.Unit (failure, success, suite, test)
 import Test.Unit.Assert (assert, assertFalse, equal, shouldEqual)
-import Test.Unit.Console (TESTOUTPUT)
 import Test.Unit.Main (runTest)
 
-main :: forall e.
-  Eff
-    ( console :: CONSOLE
-    , testOutput :: TESTOUTPUT
-    , avar :: AVAR
-    | e
-    )
-    Unit
+main :: Effect Unit
 main = runTest do
   suite "Record extras" do
     test "mapRecord" do
