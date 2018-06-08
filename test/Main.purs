@@ -6,9 +6,9 @@ import Data.List (List(Nil), (:))
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
-import Record.Extra (type (:::), SLProxy(..), SNil, compareRecord, eqRecord, keys, mapRecord, sequenceRecord, showRecord, slistKeys, zipRecord)
+import Record.Extra (type (:::), SLProxy(..), SNil, compareRecord, keys, mapRecord, sequenceRecord, slistKeys, zipRecord)
 import Test.Unit (failure, success, suite, test)
-import Test.Unit.Assert (assert, assertFalse, equal, shouldEqual)
+import Test.Unit.Assert (equal, shouldEqual)
 import Test.Unit.Main (runTest)
 
 main :: Effect Unit
@@ -38,10 +38,6 @@ main = runTest do
       let slistKeyed = slistKeys $ SLProxy :: SLProxy ("a" ::: "b" ::: "c" ::: SNil)
       equal ("a" : "b" : "c" : Nil) slistKeyed
 
-    test "eqRecord" do
-      assert "works equal" $ eqRecord {a: 1, b: 2, c: 3} {a: 1, b: 2, c: 3}
-      assertFalse "works not equal" $ eqRecord {a: 5, b: 2, c: 3} {a: 1, b: 2, c: 3}
-
     test "compareRecord" do
       compareRecord {a: 1, b: 2, c: 3} {a: 1, b: 2, c: 3} `shouldEqual` EQ
       compareRecord {a: 2, b: 2, c: 3} {a: 1, b: 2, c: 3} `shouldEqual` GT
@@ -50,12 +46,6 @@ main = runTest do
       compareRecord {a: 1, b: 2, c: 3} {a: 2, b: 2, c: 3} `shouldEqual` LT
       compareRecord {a: 1, b: 2, c: 3} {a: 1, b: 3, c: 3} `shouldEqual` LT
       compareRecord {a: 1, b: 2, c: 3} {a: 1, b: 2, c: 4} `shouldEqual` LT
-
-    test "showRecord" do
-      showRecord {} `shouldEqual` "{}"
-
-      showRecord { a: 1, b: 2, c: "foo", d: "bar" }
-        `shouldEqual` "{ a: 1, b: 2, c: \"foo\", d: \"bar\" }"
 
     test "sequenceRecord" do
       let sequenced = sequenceRecord {x: Just "a", y: Just 1, z: Just 3}
