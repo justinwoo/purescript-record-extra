@@ -6,10 +6,10 @@ import Data.List (List, (:))
 import Data.Tuple (Tuple(..))
 import Prim.Row as Row
 import Prim.RowList as RL
-import Record (get) as R
+import Record (insert, get) as R
 import Record.Builder (Builder)
 import Record.Builder as Builder
-import Type.Prelude (class IsSymbol, RLProxy(RLProxy), SProxy(SProxy), reflectSymbol)
+import Type.Prelude (class IsSymbol, RLProxy(RLProxy), SProxy(SProxy), reflectSymbol, RProxy)
 
 mapRecord :: forall row xs a b row'
    . RL.RowToList row xs
@@ -213,3 +213,29 @@ sequenceRecord :: forall row row' rl m
 sequenceRecord a = Builder.build <@> {} <$> builder
   where
     builder = sequenceRecordImpl (RLProxy :: RLProxy rl) a
+
+class RowSubset (row :: # Type) (xs :: RL.RowList) (subrow :: # Type) | row xs -> subrow where
+  subsetRecordImpl :: RLProxy xs -> { | row } -> { | subrow }
+
+instance nilRowSubset :: RowSubset row RL.Nil () where subsetRecordImpl _ _ = {}
+
+instance consRowSubset
+  ::
+  ( IsSymbol sym
+  , Row.Cons sym a subrowWithoutSym subrowWithSym
+  , Row.Cons sym a srcWithoutSym src
+  , Row.Lacks sym subrowWithoutSym
+  , RowSubset src rl subrowWithoutSym
+  ) => RowSubset src (RL.Cons sym a rl) subrowWithSym where
+  subsetRecordImpl _ src = R.insert sproxy (R.get sproxy src) (subsetRecordImpl (RLProxy :: RLProxy rl) src)
+    where
+      sproxy = SProxy :: SProxy sym
+
+subsetRecord
+  :: ∀ rl subR src
+  . RL.RowToList subR rl
+  => RowSubset src rl subR
+  => { | src }
+  -> RProxy subR
+  -> { | subR }
+subsetRecord src _ = subsetRecordImpl (RLProxy :: RLProxy rl) src

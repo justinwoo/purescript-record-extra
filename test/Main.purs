@@ -6,10 +6,11 @@ import Data.List (List(Nil), (:))
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
-import Record.Extra (type (:::), SLProxy(..), SNil, compareRecord, keys, mapRecord, sequenceRecord, slistKeys, zipRecord)
+import Record.Extra (type (:::), SLProxy(..), SNil, compareRecord, keys, mapRecord, sequenceRecord, slistKeys, subsetRecord, zipRecord)
 import Test.Unit (failure, success, suite, test)
 import Test.Unit.Assert (equal, shouldEqual)
 import Test.Unit.Main (runTest)
+import Type.Row (RProxy(..))
 
 main :: Effect Unit
 main = runTest do
@@ -46,6 +47,11 @@ main = runTest do
       compareRecord {a: 1, b: 2, c: 3} {a: 2, b: 2, c: 3} `shouldEqual` LT
       compareRecord {a: 1, b: 2, c: 3} {a: 1, b: 3, c: 3} `shouldEqual` LT
       compareRecord {a: 1, b: 2, c: 3} {a: 1, b: 2, c: 4} `shouldEqual` LT
+
+    test "subsetRecord" do
+       subsetRecord {a: 1, b: "foo"} (RProxy :: RProxy (a :: Int)) `shouldEqual` { a: 1 }
+       subsetRecord {a: 1, b: "foo"} (RProxy :: RProxy (a :: Int, b :: String)) `shouldEqual` { a: 1, b: "foo" }
+       subsetRecord {a: 1, b: "foo"} (RProxy :: RProxy ()) `shouldEqual` {}
 
     test "sequenceRecord" do
       let sequenced = sequenceRecord {x: Just "a", y: Just 1, z: Just 3}
