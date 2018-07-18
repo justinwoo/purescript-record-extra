@@ -3,6 +3,7 @@ module Record.Extra where
 import Prelude
 
 import Data.List (List, (:))
+import Data.Newtype (class Newtype, unwrap)
 import Data.Tuple (Tuple(..))
 import Prim.Row as Row
 import Prim.RowList as RL
@@ -213,3 +214,39 @@ sequenceRecord :: forall row row' rl m
 sequenceRecord a = Builder.build <@> {} <$> builder
   where
     builder = sequenceRecordImpl (RLProxy :: RLProxy rl) a
+
+class UnwrapRecord
+  (xs :: RL.RowList) (row :: # Type) (from :: # Type) (to :: # Type)
+  | xs -> from to where
+  unwrapRecordBuilder :: RLProxy xs -> Record row -> Builder { | from } { | to }
+
+instance unwrapRecordNil :: UnwrapRecord RL.Nil row () () where
+  unwrapRecordBuilder _ _ = identity
+
+instance unwrapRecordCons
+  :: ( IsSymbol name
+     , Row.Cons name wrapper trash row
+     , Newtype wrapper x
+     , UnwrapRecord tail row from from'
+     , Row.Lacks name from'
+     , Row.Cons name x from' to
+     )
+  => UnwrapRecord (RL.Cons name wrapper tail) row from to where
+  unwrapRecordBuilder _ r =
+    first <<< rest
+    where
+      _name = SProxy :: SProxy name
+      val = unwrap $ R.get _name r
+      rest = unwrapRecordBuilder (RLProxy :: RLProxy tail) r
+      first = Builder.insert _name val
+
+-- | Given a record filled with newtypes, unwraps them all
+unwrapRecord
+  :: ∀ row xs row'
+   . RL.RowToList row xs
+  => UnwrapRecord xs row () row'
+  => Record row
+  -> Record row'
+unwrapRecord r = Builder.build builder {}
+  where
+    builder = unwrapRecordBuilder (RLProxy :: RLProxy xs) r
