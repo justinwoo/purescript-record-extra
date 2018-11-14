@@ -14,6 +14,7 @@
   "dependencies": {
     "purescript-typelevel-prelude": "^3.0.0",
     "purescript-record": "^1.0.0",
+    "purescript-functions": "^4.0.0",
     "purescript-lists": "^5.0.0"
   },
   "devDependencies": {

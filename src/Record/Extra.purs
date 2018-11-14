@@ -2,6 +2,8 @@ module Record.Extra where
 
 import Prelude
 
+import Data.Array (fromFoldable)
+import Data.Function.Uncurried (Fn2, runFn2)
 import Data.List (List, (:))
 import Data.Tuple (Tuple(..))
 import Prim.Row as Row
@@ -9,7 +11,7 @@ import Prim.RowList as RL
 import Record (get) as R
 import Record.Builder (Builder)
 import Record.Builder as Builder
-import Type.Prelude (class IsSymbol, RLProxy(RLProxy), SProxy(SProxy), reflectSymbol)
+import Type.Prelude (class IsSymbol, RProxy(RProxy), RLProxy(RLProxy), SProxy(SProxy), reflectSymbol)
 
 mapRecord :: forall row xs a b row'
    . RL.RowToList row xs
@@ -123,6 +125,18 @@ keys :: forall g row rl
   => g row -- this will work for any type with the row as a param!
   -> List String
 keys _ = keysImpl (RLProxy :: RLProxy rl)
+
+foreign import pickFn :: forall r1 r2. Fn2 (Array String) (Record r1) (Record r2)
+
+pick :: forall a r b l.
+     Row.Union b r a
+  => RL.RowToList b l
+  => Keys l
+  => Record a
+  -> Record b
+pick = runFn2 pickFn $ (ks :: Array String)
+  where
+    ks = (fromFoldable $ keys (RProxy :: RProxy b))
 
 slistKeys :: forall g tuples rl
    . SListToRowList tuples rl
