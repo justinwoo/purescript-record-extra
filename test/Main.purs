@@ -37,11 +37,15 @@ main = runTest do
 
     test "pick" do
       let r1 = (pick {a: 1, b: 2, c: 3} :: Record (a :: Int, b :: Int))
-      equal r1 {a: 1, b: 2}
+      r1 `shouldEqual` {a: 1, b: 2}
       let r2 = {a: 4, b: 5, c: 6}
       -- Note: merge copies all runtime keys of an object
       --       which is why we can't just use unsafeCoerce
-      equal (r1 `merge` r2) {a: 1, b: 2, c: 6}
+      (r1 `merge` r2) `shouldEqual` {a: 1, b: 2, c: 6}
+      pick {a: 1, b: 2, c: 3} `shouldEqual` {}
+      pick {a: 1, b: 2, c: 3} `shouldEqual` {a: 1}
+      pick {a: 1, b: 2, c: 3} `shouldEqual` {a: 1, b: 2}
+      pick {a: 1, b: 2, c: 3} `shouldEqual` {a: 1, b: 2, c: 3}
 
     test "slistKeys" do
       let slistKeyed = slistKeys $ SLProxy :: SLProxy ("a" ::: "b" ::: "c" ::: SNil)

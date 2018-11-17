@@ -134,9 +134,9 @@ pick :: forall a r b l.
   => Keys l
   => Record a
   -> Record b
-pick = runFn2 pickFn $ (ks :: Array String)
+pick = runFn2 pickFn ks
   where
-    ks = (fromFoldable $ keys (RProxy :: RProxy b))
+    ks = fromFoldable $ keys (RProxy :: RProxy b)
 
 slistKeys :: forall g tuples rl
    . SListToRowList tuples rl
