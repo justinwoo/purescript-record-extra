@@ -6,7 +6,8 @@ import Data.List (List(Nil), (:))
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
-import Record.Extra (type (:::), SLProxy(..), SNil, compareRecord, keys, mapRecord, sequenceRecord, slistKeys, zipRecord)
+import Record (merge)
+import Record.Extra (type (:::), SLProxy(..), SNil, compareRecord, keys, pick, mapRecord, sequenceRecord, slistKeys, zipRecord)
 import Test.Unit (failure, success, suite, test)
 import Test.Unit.Assert (equal, shouldEqual)
 import Test.Unit.Main (runTest)
@@ -33,6 +34,18 @@ main = runTest do
     test "keys" do
       let keyed = keys { a: 1, b: 2 }
       equal ("a" : "b" : Nil) keyed
+
+    test "pick" do
+      let r1 = (pick {a: 1, b: 2, c: 3} :: Record (a :: Int, b :: Int))
+      r1 `shouldEqual` {a: 1, b: 2}
+      let r2 = {a: 4, b: 5, c: 6}
+      -- Note: merge copies all runtime keys of an object
+      --       which is why we can't just use unsafeCoerce
+      (r1 `merge` r2) `shouldEqual` {a: 1, b: 2, c: 6}
+      pick {a: 1, b: 2, c: 3} `shouldEqual` {}
+      pick {a: 1, b: 2, c: 3} `shouldEqual` {a: 1}
+      pick {a: 1, b: 2, c: 3} `shouldEqual` {a: 1, b: 2}
+      pick {a: 1, b: 2, c: 3} `shouldEqual` {a: 1, b: 2, c: 3}
 
     test "slistKeys" do
       let slistKeyed = slistKeys $ SLProxy :: SLProxy ("a" ::: "b" ::: "c" ::: SNil)
