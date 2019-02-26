@@ -193,15 +193,28 @@ compareRecord :: forall row rl
   -> Ordering
 compareRecord a b = compareRecordImpl (RLProxy :: RLProxy rl) a b
 
-class Applicative m <= SequenceRecord rl row from to m
+class Functor m <= SequenceRecord rl row from to m
   | rl -> row from to m
   where
     sequenceRecordImpl :: RLProxy rl -> Record row -> m (Builder { | from } { | to })
 
-instance sequenceRecordCons ::
+instance sequenceRecordSingle ::
   ( IsSymbol name
-  , Applicative m
   , Row.Cons name (m ty) trash row
+  , Functor m
+  , Row.Lacks name ()
+  , Row.Cons name ty () to
+  ) => SequenceRecord (RL.Cons name (m ty) RL.Nil) row () to m where
+  sequenceRecordImpl _ a  =
+       Builder.insert namep <$> valA
+    where
+      namep = SProxy :: SProxy name
+      valA = R.get namep a
+
+else instance sequenceRecordCons ::
+  ( IsSymbol name
+  , Row.Cons name (m ty) trash row
+  , Apply m
   , SequenceRecord tail row from from' m
   , Row.Lacks name from'
   , Row.Cons name ty from' to
@@ -220,7 +233,6 @@ instance sequenceRecordNil :: Applicative m => SequenceRecord RL.Nil row () () m
 
 sequenceRecord :: forall row row' rl m
    . RL.RowToList row rl
-  => Applicative m
   => SequenceRecord rl row () row' m
   => Record row
   -> m (Record row')

@@ -12,6 +12,15 @@ import Test.Unit (failure, success, suite, test)
 import Test.Unit.Assert (equal, shouldEqual)
 import Test.Unit.Main (runTest)
 
+-- Need something that is Apply but not Applicative...
+newtype Maybe' a = Maybe' (Maybe a)
+derive newtype instance maybePrimeFunctor :: Functor Maybe'
+derive newtype instance maybePrimeApply :: Apply Maybe'
+
+-- ... and something that is a Functor but not Apply
+newtype Maybe'' a = Maybe'' (Maybe a)
+derive newtype instance maybe2PrimeFunctor :: Functor Maybe''
+
 main :: Effect Unit
 main = runTest do
   suite "Record extras" do
@@ -76,3 +85,20 @@ main = runTest do
           failure "sequenceRecord failed"
         Nothing -> do
           success
+
+      let sequenced3 = sequenceRecord {}
+      case sequenced3 of
+        Just {} -> success
+        Nothing -> failure "sequenceRecord failed"
+
+      let sequenced4 = sequenceRecord {x: Maybe' $ Just 1, y: Maybe' $ Just "y"}
+      case sequenced4 of
+        Maybe' (Just inner) -> do
+          equal 1 inner.x
+          equal "y" inner.y
+        Maybe' Nothing -> failure "sequenceRecord failed"
+
+      let sequenced5 = sequenceRecord {x: Maybe'' $ Just 1}
+      case sequenced5 of
+        Maybe'' (Just inner) -> equal 1 inner.x
+        Maybe'' Nothing -> failure "sequenceRecord failed"
