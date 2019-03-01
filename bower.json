@@ -15,7 +15,8 @@
     "purescript-typelevel-prelude": "^3.0.0",
     "purescript-record": "^1.0.0",
     "purescript-functions": "^4.0.0",
-    "purescript-lists": "^5.0.0"
+    "purescript-lists": "^5.0.0",
+    "purescript-arrays": "^5.2.0"
   },
   "devDependencies": {
     "purescript-test-unit": "^14.0.0"
