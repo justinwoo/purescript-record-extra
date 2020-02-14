@@ -23,7 +23,7 @@ mapRecord f r = Builder.build builder {}
   where
     builder = mapRecordBuilder (RLProxy :: RLProxy xs) f r
 
-class MapRecord (xs :: RL.RowList) (row :: # Type) a b (from :: # Type) (to :: # Type)
+class MapRecord (xs :: RL.RowList Type) (row :: Row Type) a b (from :: Row Type) (to :: Row Type)
   | xs -> row a b from to where
   mapRecordBuilder :: RLProxy xs -> (a -> b) -> Record row -> Builder { | from } { | to }
 
@@ -46,12 +46,12 @@ instance mapRecordNil :: MapRecord RL.Nil row a b () () where
   mapRecordBuilder _ _ _ = identity
 
 class ZipRecord
-  ( rla :: RL.RowList )
-  ( ra :: # Type )
-  ( rlb :: RL.RowList )
-  ( rb :: # Type )
-  ( from :: # Type )
-  ( to :: # Type )
+  ( rla :: RL.RowList Type )
+  ( ra :: Row Type )
+  ( rlb :: RL.RowList Type )
+  ( rb :: Row Type )
+  ( from :: Row Type )
+  ( to :: Row Type )
   | rla -> ra from to
   , rlb -> rb from to
   where
@@ -104,7 +104,7 @@ zipRecord ra rb = Builder.build builder {}
     tb = RLProxy :: RLProxy tb
     builder = zipRecordImpl ta ra tb rb
 
-class Keys (xs :: RL.RowList) where
+class Keys (xs :: RL.RowList Type) where
   keysImpl :: RLProxy xs -> List String
 
 instance nilKeys :: Keys RL.Nil where
@@ -145,7 +145,7 @@ slistKeys :: forall g tuples rl
   -> List String
 slistKeys _ = keysImpl (RLProxy :: RLProxy rl)
 
-foreign import kind SList
+data SList
 foreign import data SCons :: Symbol -> SList -> SList
 foreign import data SNil :: SList
 
@@ -153,7 +153,7 @@ data SLProxy (xs :: SList) = SLProxy
 
 infixr 6 type SCons as :::
 
-class SListToRowList (xs :: SList) (rl :: RL.RowList) | xs -> rl, rl -> xs
+class SListToRowList (xs :: SList) (rl :: RL.RowList Type) | xs -> rl, rl -> xs
 
 instance slToRlSNil :: SListToRowList SNil RL.Nil
 
