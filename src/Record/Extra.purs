@@ -45,6 +45,42 @@ instance mapRecordCons ::
 instance mapRecordNil :: MapRecord RL.Nil row a b () () where
   mapRecordBuilder _ _ _ = identity
 
+-- | Like mapRecord but maps a natural transformation over the record 
+mapRecordK ::
+  forall row xs f g a row'.
+  RL.RowToList row xs =>
+  MapRecordK xs row f g a () row' =>
+  (f ~> g) ->
+  Record row ->
+  Record row'
+mapRecordK f r = Builder.build builder {}
+  where
+  builder = mapRecordKBuilder (RLProxy :: RLProxy xs) f r
+
+class MapRecordK (xs :: RL.RowList) (row :: # Type) f g a (from :: # Type) (to :: # Type) | xs -> row f g a from to where
+  mapRecordKBuilder :: RLProxy xs -> (f ~> g) -> Record row -> Builder { | from } { | to }
+
+instance mapRecordKCons ::
+  ( IsSymbol name
+  , Row.Cons name (f a) trash row
+  , MapRecordK tail row f g b from from'
+  , Row.Lacks name from'
+  , Row.Cons name (g a) from' to
+  ) =>
+  MapRecordK (RL.Cons name (f a) tail) row f g a from to where
+  mapRecordKBuilder _ f r = first <<< rest
+    where
+    nameP = SProxy :: SProxy name
+
+    val = f $ R.get nameP r
+
+    rest = mapRecordKBuilder (RLProxy :: RLProxy tail) f r
+
+    first = Builder.insert nameP val
+
+instance mapRecordKNil :: MapRecordK RL.Nil row f g a () () where
+  mapRecordKBuilder _ _ _ = identity
+  
 class ZipRecord
   ( rla :: RL.RowList )
   ( ra :: # Type )
