@@ -57,7 +57,7 @@ main = runTest do
       pick {a: 1, b: 2, c: 3} `shouldEqual` {a: 1, b: 2, c: 3}
 
     test "slistKeys" do
-      let slistKeyed = slistKeys $ SLProxy :: SLProxy ("a" ::: "b" ::: "c" ::: SNil)
+      let slistKeyed = slistKeys $ (SLProxy :: SLProxy ("a" ::: "b" ::: "c" ::: SNil))
       equal ("a" : "b" : "c" : Nil) slistKeyed
 
     test "compareRecord" do
