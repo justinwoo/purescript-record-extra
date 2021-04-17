@@ -7,10 +7,11 @@ import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Record (merge)
-import Record.Extra (type (:::), SLProxy(..), SNil, compareRecord, keys, pick, mapRecord, sequenceRecord, slistKeys, zipRecord)
+import Record.Extra (type (:::), SNil, compareRecord, keys, pick, mapRecord, sequenceRecord, slistKeys, zipRecord)
 import Test.Unit (failure, success, suite, test)
 import Test.Unit.Assert (equal, shouldEqual)
 import Test.Unit.Main (runTest)
+import Type.Proxy (Proxy(..))
 
 -- Need something that is Apply but not Applicative...
 newtype Maybe' a = Maybe' (Maybe a)
@@ -57,7 +58,7 @@ main = runTest do
       pick {a: 1, b: 2, c: 3} `shouldEqual` {a: 1, b: 2, c: 3}
 
     test "slistKeys" do
-      let slistKeyed = slistKeys $ SLProxy :: SLProxy ("a" ::: "b" ::: "c" ::: SNil)
+      let slistKeyed = slistKeys (Proxy :: _ ("a" ::: "b" ::: "c" ::: SNil))
       equal ("a" : "b" : "c" : Nil) slistKeyed
 
     test "compareRecord" do
