@@ -2,7 +2,7 @@
   "name": "purescript-record-extra",
   "repository": {
     "type": "git",
-    "url": "git://github.com/justinwoo/purescript-record-extra.git"
+    "url": "https://github.com/justinwoo/purescript-record-extra.git"
   },
   "license": "MIT",
   "ignore": [
