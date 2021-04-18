@@ -11,7 +11,8 @@ import Prim.RowList as RL
 import Record (get) as R
 import Record.Builder (Builder)
 import Record.Builder as Builder
-import Type.Prelude (class IsSymbol, RProxy(RProxy), RLProxy(RLProxy), SProxy(SProxy), reflectSymbol)
+import Type.Prelude (class IsSymbol, reflectSymbol)
+import Type.Proxy (Proxy(..))
 
 mapRecord :: forall row xs a b row'
    . RL.RowToList row xs
@@ -21,11 +22,11 @@ mapRecord :: forall row xs a b row'
   -> Record row'
 mapRecord f r = Builder.build builder {}
   where
-    builder = mapRecordBuilder (RLProxy :: RLProxy xs) f r
+    builder = mapRecordBuilder (Proxy :: _ xs) f r
 
-class MapRecord (xs :: RL.RowList) (row :: # Type) a b (from :: # Type) (to :: # Type)
+class MapRecord (xs :: RL.RowList Type) (row :: Row Type) a b (from :: Row Type) (to :: Row Type)
   | xs -> row a b from to where
-  mapRecordBuilder :: RLProxy xs -> (a -> b) -> Record row -> Builder { | from } { | to }
+  mapRecordBuilder :: Proxy xs -> (a -> b) -> Record row -> Builder { | from } { | to }
 
 instance mapRecordCons ::
   ( IsSymbol name
@@ -37,28 +38,28 @@ instance mapRecordCons ::
   mapRecordBuilder _ f r =
     first <<< rest
     where
-      nameP = SProxy :: SProxy name
+      nameP = Proxy :: _ name
       val = f $ R.get nameP r
-      rest = mapRecordBuilder (RLProxy :: RLProxy tail) f r
+      rest = mapRecordBuilder (Proxy :: _ tail) f r
       first = Builder.insert nameP val
 
 instance mapRecordNil :: MapRecord RL.Nil row a b () () where
   mapRecordBuilder _ _ _ = identity
 
 class ZipRecord
-  ( rla :: RL.RowList )
-  ( ra :: # Type )
-  ( rlb :: RL.RowList )
-  ( rb :: # Type )
-  ( from :: # Type )
-  ( to :: # Type )
+  ( rla :: RL.RowList Type)
+  ( ra :: Row Type )
+  ( rlb :: RL.RowList Type)
+  ( rb :: Row Type )
+  ( from :: Row Type )
+  ( to :: Row Type )
   | rla -> ra from to
   , rlb -> rb from to
   where
     zipRecordImpl ::
-         RLProxy rla
+         Proxy rla
       -> Record ra
-      -> RLProxy rlb
+      -> Proxy rlb
       -> Record rb
       -> Builder { | from } { | to }
 
@@ -84,10 +85,10 @@ instance zipRecordCons
   where
     zipRecordImpl _ ra _ rb = first <<< tail
       where
-        name = SProxy :: SProxy k
+        name = Proxy :: _ k
         head = Tuple (R.get name ra) (R.get name rb)
-        ta = RLProxy :: RLProxy ta
-        tb = RLProxy :: RLProxy tb
+        ta = Proxy :: _ ta
+        tb = Proxy :: _ tb
         tail = zipRecordImpl ta ra tb rb
         first = Builder.insert name head
 
@@ -100,12 +101,12 @@ zipRecord :: forall ta ra tb rb rc
   -> Record rc
 zipRecord ra rb = Builder.build builder {}
   where
-    ta = RLProxy :: RLProxy ta
-    tb = RLProxy :: RLProxy tb
+    ta = Proxy :: _ ta
+    tb = Proxy :: _ tb
     builder = zipRecordImpl ta ra tb rb
 
-class Keys (xs :: RL.RowList) where
-  keysImpl :: RLProxy xs -> List String
+class Keys (xs :: RL.RowList Type) where
+  keysImpl :: Proxy xs -> List String
 
 instance nilKeys :: Keys RL.Nil where
   keysImpl _ = mempty
@@ -116,15 +117,15 @@ instance consKeys ::
   ) => Keys (RL.Cons name ty tail) where
   keysImpl _ = first : rest
     where
-      first = reflectSymbol (SProxy :: SProxy name)
-      rest = keysImpl (RLProxy :: RLProxy tail)
+      first = reflectSymbol (Proxy :: _ name)
+      rest = keysImpl (Proxy :: _ tail)
 
 keys :: forall g row rl
    . RL.RowToList row rl
   => Keys rl
   => g row -- this will work for any type with the row as a param!
   -> List String
-keys _ = keysImpl (RLProxy :: RLProxy rl)
+keys _ = keysImpl (Proxy :: _ rl)
 
 foreign import pickFn :: forall r1 r2. Fn2 (Array String) (Record r1) (Record r2)
 
@@ -136,24 +137,22 @@ pick :: forall a r b l.
   -> Record b
 pick = runFn2 pickFn ks
   where
-    ks = fromFoldable $ keys (RProxy :: RProxy b)
+    ks = fromFoldable $ keys (Proxy :: _ b)
 
 slistKeys :: forall g tuples rl
    . SListToRowList tuples rl
   => Keys rl
   => g tuples
   -> List String
-slistKeys _ = keysImpl (RLProxy :: RLProxy rl)
+slistKeys _ = keysImpl (Proxy :: _ rl)
 
-foreign import kind SList
+data SList
 foreign import data SCons :: Symbol -> SList -> SList
 foreign import data SNil :: SList
 
-data SLProxy (xs :: SList) = SLProxy
-
 infixr 6 type SCons as :::
 
-class SListToRowList (xs :: SList) (rl :: RL.RowList) | xs -> rl, rl -> xs
+class SListToRowList (xs :: SList) (rl :: RL.RowList Type) | xs -> rl, rl -> xs
 
 instance slToRlSNil :: SListToRowList SNil RL.Nil
 
@@ -161,10 +160,10 @@ instance slToRlSCons ::
   ( SListToRowList sTail tail
   ) => SListToRowList (SCons name sTail) (RL.Cons name trash tail)
 
-class OrdRecord rl row
+class OrdRecord (rl :: RL.RowList Type) row
   | rl -> row
   where
-    compareRecordImpl :: RLProxy rl -> Record row -> Record row -> Ordering
+    compareRecordImpl :: Proxy rl -> Record row -> Record row -> Ordering
 
 instance ordRecordCons ::
   ( IsSymbol name
@@ -177,10 +176,10 @@ instance ordRecordCons ::
          EQ -> compareRecordImpl tailp a b
          ordering -> ordering
     where
-      namep = SProxy :: SProxy name
+      namep = Proxy :: _ name
       valA = R.get namep a
       valB = R.get namep b
-      tailp = RLProxy :: RLProxy tail
+      tailp = Proxy :: _ tail
 
 instance ordRecordNil :: OrdRecord RL.Nil row where
   compareRecordImpl _ _ _ = EQ
@@ -191,12 +190,12 @@ compareRecord :: forall row rl
   => Record row
   -> Record row
   -> Ordering
-compareRecord a b = compareRecordImpl (RLProxy :: RLProxy rl) a b
+compareRecord a b = compareRecordImpl (Proxy :: _ rl) a b
 
-class Functor m <= SequenceRecord rl row from to m
+class Functor m <= SequenceRecord (rl :: RL.RowList Type) row from to m
   | rl -> row from to m
   where
-    sequenceRecordImpl :: RLProxy rl -> Record row -> m (Builder { | from } { | to })
+    sequenceRecordImpl :: Proxy rl -> Record row -> m (Builder { | from } { | to })
 
 instance sequenceRecordSingle ::
   ( IsSymbol name
@@ -208,7 +207,7 @@ instance sequenceRecordSingle ::
   sequenceRecordImpl _ a  =
        Builder.insert namep <$> valA
     where
-      namep = SProxy :: SProxy name
+      namep = Proxy :: _ name
       valA = R.get namep a
 
 else instance sequenceRecordCons ::
@@ -222,9 +221,9 @@ else instance sequenceRecordCons ::
   sequenceRecordImpl _ a  =
        fn <$> valA <*> rest
     where
-      namep = SProxy :: SProxy name
+      namep = Proxy :: _ name
       valA = R.get namep a
-      tailp = RLProxy :: RLProxy tail
+      tailp = Proxy :: _ tail
       rest = sequenceRecordImpl tailp a
       fn valA' rest' = Builder.insert namep valA' <<< rest'
 
@@ -238,4 +237,4 @@ sequenceRecord :: forall row row' rl m
   -> m (Record row')
 sequenceRecord a = Builder.build <@> {} <$> builder
   where
-    builder = sequenceRecordImpl (RLProxy :: RLProxy rl) a
+    builder = sequenceRecordImpl (Proxy :: _ rl) a
