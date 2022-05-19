@@ -12,13 +12,13 @@
     "output"
   ],
   "dependencies": {
-    "purescript-typelevel-prelude": "^6.0.0",
-    "purescript-record": "^3.0.0",
-    "purescript-functions": "^5.0.0",
-    "purescript-lists": "^6.0.0",
-    "purescript-arrays": "^6.0.0"
+    "purescript-typelevel-prelude": "^7.0.0",
+    "purescript-record": "^4.0.0",
+    "purescript-functions": "^6.0.0",
+    "purescript-lists": "^7.0.0",
+    "purescript-arrays": "^7.0.0"
   },
   "devDependencies": {
-    "purescript-test-unit": "^16.0.0"
+    "purescript-test-unit": "^17.0.0"
   }
 }
